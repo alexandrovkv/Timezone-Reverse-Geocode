@@ -1,0 +1,137 @@
+
+
+var fs = require('fs');
+var path = require('path');
+var jsts = require('jsts');
+var inside = require('turf-inside')
+
+var args = process.argv.slice(2);
+
+var baseDir = './out/';
+
+
+var scanDir = function(dir, latitude, longitude) {
+    fs.readdir(dir, function(err, files) {
+	if(err) {
+	    console.log('read dir error:', err);
+	    return;
+	}
+
+	files.map(function(file) {
+	    return path.join(dir, file);
+	}).filter(function(file) {
+	    return fs.statSync(file).isFile();
+	}).forEach(function(file) {
+	    readFile(file, latitude, longitude);
+	});
+    });
+};
+
+var readFile = function(file, latitude, longitude) {
+    var baseName = path.basename(file, '.json');
+    var lat = parseInt(latitude);
+    var lng = parseInt(longitude);
+    var maxLat = parseInt(baseName.substr(0, 2));
+    var minLng = parseInt(baseName.substr(2, 3));
+    var minLat = parseInt(baseName.substr(5, 2));
+    var maxLng = parseInt(baseName.substr(7, 3));
+
+    if(lat >= minLat && lat <= maxLat &&
+       lng >= minLng && lng <= maxLng) {
+	fs.readFile(file, 'utf8', function(err, data) {
+	    var json = JSON.parse(data);
+	    processFile(json, latitude, longitude);
+	});
+    }
+};
+
+var processFile = function(data, latitude, longitude) {
+    var lat = parseFloat(latitude);
+    var lng = parseFloat(longitude);
+    var bbox = data['bbox'];
+    var maxLat = parseFloat(bbox[3]);
+    var minLng = parseFloat(bbox[0]);
+    var minLat = parseFloat(bbox[1]);
+    var maxLng = parseFloat(bbox[2]);
+
+    if(lat >= minLat && lat <= maxLat &&
+       lng >= minLng && lng <= maxLng) {
+	var geojsonReader = new jsts.io.GeoJSONReader();
+	var geomType = data['type'];
+	var coordinates = data['coordinates'];
+	var point = [lng, lat];
+	var pointInPolygon = false;
+	var jstsPoint = geojsonReader.read({
+	    type:         'Point',
+	    coordinates:  point
+	});
+
+	switch(geomType) {
+	case 'Polygon':
+	    //var jstsPolygon = geojsonReader.read(data);
+	    pointInPolygon = inside(point, {
+		type:      'feature',
+		geometry:  data
+	    })
+	    //pointInPolygon = jstsPolygon.contains(jstsPoint);
+	    if(pointInPolygon)
+		console.log('polygon, time zone:', data['tz']);
+	    break;
+	case 'MultiPolygon':
+	    /*for(var i = 0, l = coordinates.length; i < l; i++) {
+		var polygon = coordinates[i];
+		console.log('multipolygon Ray Casting:', inside(point, polygon));
+	    }*/
+	    pointInPolygon = inside(point, {
+		type:      'feature',
+		geometry:  data
+	    })
+	    if(pointInPolygon)
+		console.log('multipolygon, time zone:', data['tz']);
+	    /*var jstsMultiPolygon = coordinates.map(function(polygon, index) {
+		var jstsPolygon = geojsonReader.read({
+		    type:         'Polygon',
+		    coordinates:  polygon
+		});
+		jstsPolygon.__index = index;
+		return jstsPolygon;
+	    });
+	    jstsMultiPolygon.filter(function(poly) {
+		return poly.contains(jstsPoint);
+	    }).forEach(function(poly) {
+		console.log('in polygon', poly.__index,
+			    ' time zone:', data['tz']);
+	    });*/
+	    break;
+	default:
+	    console.log('unsupported geometry type:', geomType);
+	    break;
+	}
+    }
+};
+
+
+var getTimeZone = function(latitude, longitude) {
+    var dir = '.';
+
+    if(latitude >= 0)
+	dir = path.join(dir, 'N');
+    else
+	dir = path.join(dir, 'S');
+
+    if(longitude >= 0)
+	dir = path.join(dir, 'E');
+    else
+	dir = path.join(dir, 'W');
+
+    dir = path.join(baseDir, dir);
+    console.log(dir);
+
+    scanDir(dir, latitude, longitude);
+};
+
+
+//=======================================================================
+
+getTimeZone(args[0], args[1]);
+
