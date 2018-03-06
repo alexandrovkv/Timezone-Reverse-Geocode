@@ -3,14 +3,7 @@
  * Time zone lookup.
  * gcc -Wall -W json.c tz_lookup_1.c -o tz_lookup_1 -lm
  *
- * $Id$
- *
- * $Log:
- *
  */
-
-char *tz_lookup_1_c_cvsid =
-    "$Id$";
 
 /**
  * @file tz_lookup_1.c Time zone lookup utility implementation.
