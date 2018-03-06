@@ -69,15 +69,8 @@ var saveFile = function(file, data) {
 			       maxLng >= 0 ? 'E' : 'W', zeroPad(part3, 3),
 			       maxLat >= 0 ? 'N' : 'S', zeroPad(part4, 2));
 
-    var SW = geohash.encode(minLat, minLng, 4);
-    var NE = geohash.encode(maxLat, maxLng, 4);
-    var hashFileName = SW + NE;
-    var centerLat = (bounds[1] + bounds[3]) / 2;
-    var centerLng = (bounds[0] + bounds[2]) / 2;
-    var hash = geohash.encode(centerLat, centerLng);
-
     var paths = getPath(minLat, maxLat, minLng, maxLng);
-    console.log('save', file, bounds, ' to ', paths, ' / ', fileName, hashFileName);
+    console.log('save', file, bounds, ' to ', paths, ' / ', fileName);
 
     for(var i = 0, l = paths.length; i < l; i++) {
 	var dir = paths[i];
